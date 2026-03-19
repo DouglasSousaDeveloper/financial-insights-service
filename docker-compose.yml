@@ -14,6 +14,8 @@ services:
     volumes:
       # Volume mapeado para persistir dados mesmo desligando o container
       - pgdata:/var/lib/postgresql/data
+      # Script de inicialização (Migrations base) executado na criação do container
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d financialdb"]
       interval: 5s
