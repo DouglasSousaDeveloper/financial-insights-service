@@ -2,8 +2,10 @@ package insight
 
 import (
 	"context"
+	"time"
 
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/domain"
+	"github.com/google/uuid"
 )
 
 // Repository lida com a leitura e gravação no banco de dados.
@@ -49,9 +51,10 @@ func (s *Service) GenerateInsight(ctx context.Context, customerID string) (*doma
 
 	// 3. Monta o objeto de domínio final
 	insight := &domain.Insight{
+		ID:         uuid.New().String(),
 		CustomerID: customerID,
 		Content:    content,
-		// O ID e CreatedAt seriam gerados aqui via biblioteca (ex: google/uuid e time.Now())
+		CreatedAt:  time.Now(),
 	}
 
 	// 4. Salva o insight gerado no DB

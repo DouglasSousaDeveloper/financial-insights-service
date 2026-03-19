@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/domain"
+	"github.com/google/uuid"
 )
 
 // Repository é a interface do lado do consumidor (Consumer-Side Interface).
@@ -26,6 +27,10 @@ func NewService(repo Repository) *Service {
 
 // ProcessTransaction aplica as regras de negócio e salva a transação.
 func (s *Service) ProcessTransaction(ctx context.Context, t *domain.Transaction) error {
+	// Adicionando controle de IDs diretamente do lado do Servidor. O Payload não dita o ID.
+	// O pacote do Google vai gerar uma string GUID V4 nativa e segura para o banco.
+	t.ID = uuid.New().String()
+
 	// Aqui entrariam as validações de negócio reais. Exemplo:
 	// if t.Amount <= 0 { return errors.New("amount must be positive") }
 	
