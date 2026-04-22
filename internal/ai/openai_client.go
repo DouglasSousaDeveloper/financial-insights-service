@@ -6,37 +6,52 @@ import (
 
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/domain"
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/insight"
+	"github.com/sashabaranov/go-openai"
 )
 
 // OpenAIClient é a implementação concreta externa que bate nas APIs da OpenAI (Adapter)
 type OpenAIClient struct {
-	apiKey string
+	client *openai.Client
 }
 
 func NewOpenAIClient(apiKey string) *OpenAIClient {
 	return &OpenAIClient{
-		apiKey: apiKey,
+		client: openai.NewClient(apiKey),
 	}
 }
 
-// GenerateFinancialInsight constrói um prompt otimizado baseado apenas nos agregados puros calculados no PG
+// GenerateFinancialInsight chama a API da OpenAI para gerar insights baseado nos agregados
 func (c *OpenAIClient) GenerateFinancialInsight(ctx context.Context, summary *domain.FinancialSummary) (string, error) {
-	// IMPORTANTE: Em um cenário real com "github.com/sashabaranov/go-openai",
-	// criaríamos um cliente openai.NewClient(c.apiKey) aqui e enviaríamos a completion request.
-
-	// Simulando a construção inteligente e minimalista do prompt, poupando tokens.
-	prompt := fmt.Sprintf(
-		"Você é um especialista financeiro. Elabore um curto insight baseado nisto: Rendas: %f | Despesas: %f",
-		summary.TotalIncome, summary.TotalExpense,
-	)
-	_ = prompt // ignora aviso de variável não retornada (mock purposes)
-
 	saldo := summary.TotalIncome - summary.TotalExpense
-	respostaMockadaLLM := fmt.Sprintf("Olá! Com base nas suas finanças do período, você teve R$%.2f de rendas "+
-		"e R$%.2f de despesas, resultando num saldo final de R$%.2f. Mantenha os bons hábitos!",
-		summary.TotalIncome, summary.TotalExpense, saldo)
+	prompt := fmt.Sprintf(
+		"Você é um especialista financeiro rigoroso. Crie um parágrafo bem curto e amigável com um conselho para um cliente que teve:\n"+
+		"Rendas Totais: R$%.2f\n"+
+		"Despesas Totais: R$%.2f\n"+
+		"Saldo final: R$%.2f\n",
+		summary.TotalIncome, summary.TotalExpense, saldo,
+	)
 
-	return respostaMockadaLLM, nil
+	req := openai.ChatCompletionRequest{
+		Model: openai.GPT3Dot5Turbo,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: prompt,
+			},
+		},
+		MaxTokens: 150,
+	}
+
+	resp, err := c.client.CreateChatCompletion(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("falha ao comunicar com API da OpenAI: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf("nenhuma resposta gerada pela OpenAI")
+	}
+
+	return resp.Choices[0].Message.Content, nil
 }
 
 // Check para garantir que OpenAIClient atenda perfeitamente a interface abstracta insight.AIClient
