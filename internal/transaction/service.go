@@ -2,13 +2,14 @@ package transaction
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/domain"
 	"github.com/google/uuid"
 )
 
 // Repository é a interface do lado do consumidor (Consumer-Side Interface).
-// Quem injetar esta dependência (o adaptador do PostgreSQL) deverá implementar este contrato.
 type Repository interface {
 	Save(ctx context.Context, t *domain.Transaction) error
 }
@@ -25,15 +26,21 @@ func NewService(repo Repository) *Service {
 	}
 }
 
-// ProcessTransaction aplica as regras de negócio e salva a transação.
 func (s *Service) ProcessTransaction(ctx context.Context, t *domain.Transaction) error {
-	// Adicionando controle de IDs diretamente do lado do Servidor. O Payload não dita o ID.
-	// O pacote do Google vai gerar uma string GUID V4 nativa e segura para o banco.
+	if strings.TrimSpace(t.CustomerID) == "" {
+		return errors.New("o customer_id é obrigatório")
+	}
+	if t.Amount <= 0 {
+		return errors.New("o valor da transação deve ser maior que zero")
+	}
+	if t.Type != domain.TransactionTypeIncome && t.Type != domain.TransactionTypeExpense {
+		return errors.New("o tipo da transação deve ser INCOME ou EXPENSE")
+	}
+	if strings.TrimSpace(t.Category) == "" {
+		return errors.New("a categoria é obrigatória")
+	}
+
 	t.ID = uuid.New().String()
 
-	// Aqui entrariam as validações de negócio reais. Exemplo:
-	// if t.Amount <= 0 { return errors.New("amount must be positive") }
-	
-	// O serviço delega a persistência para a interface (Port)
 	return s.repo.Save(ctx, t)
 }

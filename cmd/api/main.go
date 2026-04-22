@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/ai"
+	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/config"
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/database"
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/insight"
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/transaction"
@@ -21,10 +22,11 @@ func main() {
 
 	ctx := context.Background()
 	logger.Info("Iniciando Financial Insights Service...")
+	// Carrega Configurações de Ambiente
+	cfg := config.LoadConfig()
 
-	// 2. Cria instância do Adapter de Banco de Dados (DB Connection)
-	dbString := "postgres://user:pass@localhost:5432/financialdb" 
-	dbPool, err := database.NewPostgresDB(ctx, dbString)
+	// Cria instância do Adapter de Banco de Dados (DB Connection)
+	dbPool, err := database.NewPostgresDB(ctx, cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("Erro fatal ao conectar no banco", "error", err)
 		os.Exit(1)
@@ -41,7 +43,7 @@ func main() {
 
 	// Insight Core e AI Adapter
 	insightRepo := insight.NewPostgresRepository(dbPool)
-	aiClient := ai.NewOpenAIClient("fake-openai-token-apikey")
+	aiClient := ai.NewOpenAIClient(cfg.OpenAIApiKey)
 	insightService := insight.NewService(insightRepo, aiClient)
 
 	// Injetamos os Services nos Controllers/Handlers
@@ -69,10 +71,8 @@ func main() {
 		}
 		http.NotFound(w, r)
 	})
-
-	// 5. Inicia o Servidor (Essa chamada é bloqueante, igual 'app.Run()' em C# minimal APIs)
-	logger.Info("Iniciando servidor HTTP REST na porta :8080...")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	logger.Info("Iniciando servidor HTTP REST na porta " + cfg.AppPort + "...")
+	if err := http.ListenAndServe(":"+cfg.AppPort, mux); err != nil {
 		logger.Error("Falha crítica no servidor HTTP", "error", err)
 		os.Exit(1)
 	}

@@ -18,9 +18,8 @@ func NewPostgresRepository(db *pgxpool.Pool) *PostgresRepository {
 	}
 }
 
-// GetSummaryByCustomer faz pesadas operações de banco e formata para sumário financeiro do Domínio.
+// GetSummaryByCustomer busca os gastos e formata para o sumário financeiro.
 func (r *PostgresRepository) GetSummaryByCustomer(ctx context.Context, customerID string) (*domain.FinancialSummary, error) {
-	// O banco que irá totalizar agrupando a entrada/saida inteira!
 	summaryQuery := `
 		SELECT 
 			COALESCE(SUM(amount) FILTER (WHERE type = 'INCOME'), 0) AS total_income,
@@ -34,7 +33,6 @@ func (r *PostgresRepository) GetSummaryByCustomer(ctx context.Context, customerI
 		CategorySpends: make(map[string]float64),
 	}
 
-	// QueryRow é usado para retornar APENAS UMA linha (o consolidado dele)
 	err := r.db.QueryRow(ctx, summaryQuery, customerID).Scan(&summary.TotalIncome, &summary.TotalExpense)
 	if err != nil {
 		return nil, fmt.Errorf("falha ao analisar os agrupamentos financeiros: %w", err)
@@ -46,7 +44,6 @@ func (r *PostgresRepository) GetSummaryByCustomer(ctx context.Context, customerI
 		WHERE customer_id = $1 AND type = 'EXPENSE'
 		GROUP BY category
 	`
-	// Tratamos as categorias com Query, que retorna N linhas agrupadas.
 	rows, err := r.db.Query(ctx, categoryQuery, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("falha ao realizar o agrupamento por categoria: %w", err)
