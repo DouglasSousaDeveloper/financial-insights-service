@@ -6,7 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/ai"
 	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/config"
@@ -71,9 +74,31 @@ func main() {
 		}
 		http.NotFound(w, r)
 	})
-	logger.Info("Iniciando servidor HTTP REST na porta " + cfg.AppPort + "...")
-	if err := http.ListenAndServe(":"+cfg.AppPort, mux); err != nil {
-		logger.Error("Falha crítica no servidor HTTP", "error", err)
-		os.Exit(1)
+	srv := &http.Server{
+		Addr:    ":" + cfg.AppPort,
+		Handler: mux,
 	}
+
+	go func() {
+		logger.Info("Iniciando servidor HTTP REST na porta " + cfg.AppPort + "...")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("Falha crítica no servidor HTTP", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("Iniciando Graceful Shutdown...")
+
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctxShutdown); err != nil {
+		logger.Error("Erro ao encerrar o servidor", "error", err)
+	}
+
+	logger.Info("Servidor encerrado. Conexões finalizadas com segurança.")
 }
