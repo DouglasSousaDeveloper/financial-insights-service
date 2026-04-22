@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/DouglasSousaDeveloper/financial-insights-service/internal/domain"
 )
 
 type Handler struct {
@@ -57,8 +59,17 @@ func (h *Handler) GetInsights(w http.ResponseWriter, r *http.Request) {
 	}
 	customerID := pathParts[2]
 
+	insights, err := h.service.GetInsights(r.Context(), customerID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if insights == nil {
+		insights = []*domain.Insight{} // Forçar array vazio no JSON em vez de string null.
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Endpoint futuro: Aqui retornaremos os insights do array no DB para o cliente " + customerID,
-	})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(insights)
 }

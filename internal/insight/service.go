@@ -13,6 +13,7 @@ import (
 type Repository interface {
 	GetSummaryByCustomer(ctx context.Context, customerID string) (*domain.FinancialSummary, error)
 	SaveInsight(ctx context.Context, insight *domain.Insight) error
+	GetInsightsByCustomer(ctx context.Context, customerID string) ([]*domain.Insight, error)
 }
 
 // AIClient é a interface que conversa com o provedor de IA (OpenAI, Bedrock).
@@ -63,4 +64,9 @@ func (s *Service) GenerateInsight(ctx context.Context, customerID string) (*doma
 	}
 
 	return insight, nil
+}
+
+// GetInsights busca todos os insights vinculados a um determinado cliente.
+func (s *Service) GetInsights(ctx context.Context, customerID string) ([]*domain.Insight, error) {
+	return s.repo.GetInsightsByCustomer(ctx, customerID)
 }

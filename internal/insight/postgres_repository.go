@@ -74,4 +74,31 @@ func (r *PostgresRepository) SaveInsight(ctx context.Context, insight *domain.In
 	return err
 }
 
+// GetInsightsByCustomer busca uma lista de insights de um usuário ordenados pela criação descendente.
+func (r *PostgresRepository) GetInsightsByCustomer(ctx context.Context, customerID string) ([]*domain.Insight, error) {
+	query := `
+		SELECT id, customer_id, content, created_at
+		FROM insights
+		WHERE customer_id = $1
+		ORDER BY created_at DESC
+	`
+	
+	rows, err := r.db.Query(ctx, query, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao buscar banco de dados de insights: %w", err)
+	}
+	defer rows.Close()
+
+	var insights []*domain.Insight
+	for rows.Next() {
+		var insight domain.Insight
+		if err := rows.Scan(&insight.ID, &insight.CustomerID, &insight.Content, &insight.CreatedAt); err != nil {
+			return nil, err
+		}
+		insights = append(insights, &insight)
+	}
+
+	return insights, nil
+}
+
 var _ Repository = (*PostgresRepository)(nil)
