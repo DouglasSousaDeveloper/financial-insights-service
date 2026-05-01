@@ -86,5 +86,20 @@ Este fluxo incorpora operações pesadas distribuídas de forma paralela ao long
    - A *string* é extraída da *choices list*, transformada em uma Entity `domain.Insight` validada, e guardada no banco de histórico (Postgres) pelo repositório.
 5. **Encerramento HTTP**: O Handler cospe o DTO encapsulando o conselho recém gerado (HTTP 200 OK).
 
+## 5. Infraestrutura Cloud (AWS & Terraform)
+
+Para garantir escalabilidade, segurança e reprodutibilidade, o provisionamento do projeto na nuvem é gerenciado através do paradigma de *Infrastructure as Code* utilizando **Terraform**. A orquestração dos componentes de nuvem reflete a mesma segregação de responsabilidades elegante presente no software em si.
+
+### Componentes AWS:
+- **Amazon ECS (Fargate)**: Como motor de execução *serverless*, gerencia instâncias de containers Docker sem o *overhead* de instâncias EC2 manuais. A imagem Go é compilada via *multi-stage build* para criar containers ultra-leves rodando Alpine, gerados no CI e versionados estaticamente no **Amazon ECR**.
+- **Application Load Balancer (ALB)**: A porta de entrada da API. Faz o roteamento automático do tráfego web espalhando requisições para as *tasks* saudáveis do ECS de forma uniforme de acordo com o tráfego HTTP.
+- **Amazon RDS (PostgreSQL)**: Gerenciamento do banco de dados provisionado estritamente nas *Subnets Privadas* da rede, permitindo isolamento em camadas (nenhum tráfego cibernético externo alcança fisicamente as dependências do banco).
+- **Rede Base (VPC, IGW, NATs)**: Topologia moderna dividida em camadas *Public e Private*. O cluster backend ECS não fica restrito nem totalmente exposto: ele emite as requisições sincrónas para a LLM (OpenAI) passando de forma restrita e unidirecional via *NAT Gateways*.
+
+### Abordagem Multi-Ambiente (Modules):
+A infraestrutura (*IaC*) é baseada em uma montagem modular dentro da estrutura do repositório (`infra/`):
+- **`/modules`**: Fornece os *templates* encápsulandos (Network, ECR, ECS, ALB e RDS) unificados.
+- **`/environments`** (`dev`, `hom` e `prod`): Invocações reais das arquiteturas atráves do apontamento para o `main.tf` base acompanhado de variações finas (o `.tfvars`). Com isso, estipulamos que um ambiente dinâmico em `dev` é executado focado no baixo custo, enquanto a materialização em produção garante instâncias robustas atuando em Multi-AZ.
+
 ## Conclusão de Design
 Esse modelo arquitetônico eleva a testabilidade do projeto. Evita a proliferação desenfreada de *mocks* sujos de frameworks e concentra a inteligência do desenvolvedor inteiramente na estrutura do objeto `internal/domain` e a coesão das interfaces no `service.go`.

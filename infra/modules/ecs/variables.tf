@@ -1,0 +1,14 @@
+variable "environment" { type = string }
+variable "vpc_id" { type = string }
+variable "private_subnet_ids" { type = list(string) }
+variable "alb_security_group_id" { type = string }
+variable "alb_target_group_arn" { type = string }
+variable "alb_listener_arn" { type = string }
+variable "app_port" { type = number }
+variable "fargate_cpu" { type = string }
+variable "fargate_memory" { type = string }
+variable "app_image" { type = string }
+variable "app_count" { type = number }
+variable "aws_region" { type = string }
+variable "database_url" { type = string }
+variable "openai_api_key" { type = string }
